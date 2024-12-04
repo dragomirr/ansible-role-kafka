@@ -72,6 +72,7 @@
     dest: "{{ kafka__download_destination }}"
     mode: "0644"
     timeout: 30
+  
   retries: 3
   delay: 3
 
@@ -81,8 +82,8 @@
     src: "{{ kafka__download_destination }}"
     copy: false
     dest: "{{ kafka_download_directory }}"
-    owner: "{{ kafka_user }}"
-    group: "{{ kafka_user_group }}"
+    owner: "root"
+    group: "root"
 
 - name: Configure Kafka symlink
   become: true
