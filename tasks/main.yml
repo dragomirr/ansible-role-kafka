@@ -23,6 +23,7 @@
 
 - name: Install java
   become: true
+  notify: Restart Kafka
   ansible.builtin.package:
     name: "{{ kafka__dependencies }}"
     state: present
@@ -91,6 +92,7 @@
     state: link
     force: true
     follow: false
+  notify: Restart Kafka
 
 - name: Create Kafka data and log directories
   become: true
