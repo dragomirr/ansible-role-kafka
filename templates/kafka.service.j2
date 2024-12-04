@@ -6,6 +6,7 @@ Description=Kafka: Scalable Queuing System
 After=network.target
 
 [Service]
+LimitNOFILE={{ kafka_open_file_limit}}
 Type=simple
 EnvironmentFile=-/etc/sysconfig/kafka
 User={{ kafka_user}}
