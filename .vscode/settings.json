@@ -2,5 +2,6 @@
     "files.associations": {
         "**/templates/**": "ansible-jinja",
         "**/*.yml": "ansible"
-    }
+    },
+    "ansible.python.interpreterPath": "/Users/ryanfaircloth/.pyenv/versions/3.12.7/bin/python"
 }
