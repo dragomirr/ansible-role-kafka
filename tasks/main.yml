@@ -169,7 +169,6 @@
 
 - name: Configure Kafka
   become: true
-  become_user: "{{ kafka_user }}"
   ansible.builtin.template:
     src: server.properties.j2
     dest: "{{ kafka__config_path }}"
@@ -186,7 +185,6 @@
 
 - name: Check if cluster uuid lock file exists
   become: true
-  become_user: "{{ kafka_user }}"
   ansible.builtin.stat:
     path: "{{ kafka__uuid_file }}"
   register: kafka__reg_check_uuid_file
@@ -206,7 +204,6 @@
 
 - name: Write cluster uuid
   become: true
-  become_user: "{{ kafka_user }}"
   ansible.builtin.copy:
     content: "{{ kafka__reg_storage_random_uuid.stdout }}"
     dest: "{{ kafka__uuid_file }}"
@@ -215,7 +212,6 @@
 
 - name: Get cluster uuid
   become: true
-  become_user: "{{ kafka_user }}"
   ansible.builtin.command:
     cmd: cat {{ kafka__uuid_file }}
   delegate_to: "{{ groups['kafka__group_controller_nodes'] | first }}"
@@ -225,7 +221,6 @@
 
 - name: Set cluster uuid
   become: true
-  become_user: "{{ kafka_user }}"
   ansible.builtin.set_fact:
     kafka_cluster_id: "{{ kafka__reg_cluster_uuid.stdout }}"
 
