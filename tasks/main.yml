@@ -139,6 +139,22 @@
     create: true
   notify: Restart Kafka
 
+- name: Allow Firewall Controller Traffic
+  ansible.posix.firewalld:
+    port: 9093/tcp
+    permanent: true
+    state: enabled
+    immediate: true
+  when: "kafka_firewall_add_rules and ansible_os_family == 'RedHat' and 'controller' in (hostvars[item]['kafka_node_roles'] | default(kafka_node_roles))"
+
+- name: Allow Firewall Broker Traffic
+  ansible.posix.firewalld:
+    port: 9092/tcp
+    permanent: true
+    state: enabled
+    immediate: true
+  when: "kafka_firewall_add_rules and ansible_os_family == 'RedHat' and 'broker' in (hostvars[item]['kafka_node_roles'] | default(kafka_node_roles))"
+
 - name: Install Kafka service definition
   become: true
   ansible.builtin.template:
