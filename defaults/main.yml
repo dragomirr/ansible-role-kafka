@@ -6,6 +6,9 @@ kafka_version: 3.9.0
 kafka_scala_version: 2.13
 kafka_java_version: 17
 kafka_install_dependencies: false
+kafka_firewall_add_rules: false
+
+kafka_open_file_limit: 800000
 # if kafka_checksum is defined role will use that value instead getting checksum from kafka downloads page
 # kafka_checksum: >
 #   sha512: B8679283 A2D8DAB8 6E7C636B 2C688FE9 D9E64AC4
