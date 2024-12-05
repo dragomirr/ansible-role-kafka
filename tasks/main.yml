@@ -145,6 +145,7 @@
     permanent: true
     state: enabled
     immediate: true
+  loop: "{{ ansible_play_hosts }}"
   when: "kafka_firewall_add_rules and ansible_os_family == 'RedHat' and 'controller' in (hostvars[item]['kafka_node_roles'] | default(kafka_node_roles))"
 
 - name: Allow Firewall Broker Traffic
@@ -153,6 +154,7 @@
     permanent: true
     state: enabled
     immediate: true
+  loop: "{{ ansible_play_hosts }}"
   when: "kafka_firewall_add_rules and ansible_os_family == 'RedHat' and 'broker' in (hostvars[item]['kafka_node_roles'] | default(kafka_node_roles))"
 
 - name: Install Kafka service definition
