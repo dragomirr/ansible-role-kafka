@@ -23,6 +23,7 @@
 
 - name: Install java
   become: true
+  notify: Restart Kafka
   ansible.builtin.package:
     name: "{{ kafka__dependencies }}"
     state: present
@@ -71,6 +72,7 @@
     dest: "{{ kafka__download_destination }}"
     mode: "0644"
     timeout: 30
+  
   retries: 3
   delay: 3
 
@@ -80,8 +82,8 @@
     src: "{{ kafka__download_destination }}"
     copy: false
     dest: "{{ kafka_download_directory }}"
-    owner: "{{ kafka_user }}"
-    group: "{{ kafka_user_group }}"
+    owner: "root"
+    group: "root"
 
 - name: Configure Kafka symlink
   become: true
@@ -91,6 +93,7 @@
     state: link
     force: true
     follow: false
+  notify: Restart Kafka
 
 - name: Create Kafka data and log directories
   become: true
@@ -136,6 +139,24 @@
     create: true
   notify: Restart Kafka
 
+- name: Allow Firewall Controller Traffic
+  ansible.posix.firewalld:
+    port: 9093/tcp
+    permanent: true
+    state: enabled
+    immediate: true
+  loop: "{{ ansible_play_hosts }}"
+  when: "kafka_firewall_add_rules and ansible_os_family == 'RedHat' and 'controller' in (hostvars[item]['kafka_node_roles'] | default(kafka_node_roles))"
+
+- name: Allow Firewall Broker Traffic
+  ansible.posix.firewalld:
+    port: 9092/tcp
+    permanent: true
+    state: enabled
+    immediate: true
+  loop: "{{ ansible_play_hosts }}"
+  when: "kafka_firewall_add_rules and ansible_os_family == 'RedHat' and 'broker' in (hostvars[item]['kafka_node_roles'] | default(kafka_node_roles))"
+
 - name: Install Kafka service definition
   become: true
   ansible.builtin.template:
@@ -166,7 +187,6 @@
 
 - name: Configure Kafka
   become: true
-  become_user: "{{ kafka_user }}"
   ansible.builtin.template:
     src: server.properties.j2
     dest: "{{ kafka__config_path }}"
@@ -183,7 +203,6 @@
 
 - name: Check if cluster uuid lock file exists
   become: true
-  become_user: "{{ kafka_user }}"
   ansible.builtin.stat:
     path: "{{ kafka__uuid_file }}"
   register: kafka__reg_check_uuid_file
@@ -203,7 +222,6 @@
 
 - name: Write cluster uuid
   become: true
-  become_user: "{{ kafka_user }}"
   ansible.builtin.copy:
     content: "{{ kafka__reg_storage_random_uuid.stdout }}"
     dest: "{{ kafka__uuid_file }}"
@@ -212,7 +230,6 @@
 
 - name: Get cluster uuid
   become: true
-  become_user: "{{ kafka_user }}"
   ansible.builtin.command:
     cmd: cat {{ kafka__uuid_file }}
   delegate_to: "{{ groups['kafka__group_controller_nodes'] | first }}"
@@ -222,7 +239,6 @@
 
 - name: Set cluster uuid
   become: true
-  become_user: "{{ kafka_user }}"
   ansible.builtin.set_fact:
     kafka_cluster_id: "{{ kafka__reg_cluster_uuid.stdout }}"
 
