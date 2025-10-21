@@ -115,6 +115,45 @@
     state: directory
     mode: "0755"
 
+- name: Allow Kafka ports 9091, 9092, 9093 with UFW
+  become: true
+  ansible.builtin.ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+  loop:
+    - 9091
+    - 9092
+    - 9093
+    - 12345
+
+- name: Download Prometheus JMX exporter javaagent
+  become: true
+  ansible.builtin.get_url:
+    url: https://github.com/prometheus/jmx_exporter/releases/download/1.3.0/jmx_prometheus_javaagent-1.3.0.jar
+    dest: /opt/kafka/libs/jmx_prometheus_javaagent-1.3.0.jar
+    mode: "0644"
+
+- name: Create jmx_exporter.yml config
+  become: true
+  ansible.builtin.copy:
+    dest: /opt/kafka/config/jmx_exporter.yml
+    content: |
+      rules:
+        - pattern: ".*"
+    owner: "{{ kafka_user }}"
+    group: "{{ kafka_user_group }}"
+    mode: "0644"
+
+- name: Ensure KAFKA_JMX_OPTS is set after shebang in kafka-server-start.sh
+  become: true
+  ansible.builtin.lineinfile:
+    path: /opt/kafka/bin/kafka-server-start.sh
+    insertafter: '^#!.*'
+    line: export KAFKA_JMX_OPTS="-javaagent:/opt/kafka/libs/jmx_prometheus_javaagent-1.3.0.jar=9091:/opt/kafka/config/jmx_exporter.yml -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=12345 -Dcom.sun.management.jmxremote.rmi.port=12345 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname={{ ansible_host }}"
+    state: present
+    create: false
+    
 - name: Configure kafka heap size
   become: true
   ansible.builtin.lineinfile:
@@ -236,6 +275,18 @@
   changed_when: true
   when: not kafka__reg_check_if_formatted.results[0].stat.exists
 
+- name: Ensure meta.properties and bootstrap.checkpoint are owned by kafka user
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    owner: "{{ kafka_user }}"
+    group: "{{ kafka_user_group }}"
+    mode: "0600"
+  loop:
+    - "{{ kafka_log_dirs[0] }}/meta.properties"
+    - "{{ kafka_log_dirs[0] }}/bootstrap.checkpoint"
+  ignore_errors: true
+  
 - name: Flush handlers
   ansible.builtin.meta: flush_handlers
 
@@ -252,20 +303,224 @@
 - name: Wait for Kafka controllers to start
   ansible.builtin.wait_for:
     port: 9093
+    host: "{{ ansible_host }}"
     timeout: 30
   when: inventory_hostname in groups["kafka__group_controller_nodes"]
 
 - name: Wait for Kafka brokers to start
   ansible.builtin.wait_for:
     port: 9092
+    host: "{{ ansible_host }}"
     timeout: 30
   when: inventory_hostname in groups["kafka__group_broker_nodes"]
 
-- name: Fetch Kafka topics
+- name: limits.conf ayarlarını uygula
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/security/limits.conf
+    content: |
+      * hard maxlogins 10
+      * hard core 0
+      * soft nproc 512
+      * hard nproc 1024
+
+      # Kafka user limit 
+      kafka           soft    nofile          unlimited
+      kafka           hard    nofile          unlimited
+      kafka           soft    nproc           unlimited
+      kafka           hard    nproc           unlimited
+
+      # root user limit
+      root            soft    nofile          95000
+      root            hard    nofile          95000
+      root            soft    nproc           95000
+      root            hard    nproc           95000
+
+      # End of file
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: sysctl.conf os
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/sysctl.conf
+    content: >
+      # /etc/sysctl.conf - Linux kernel sysctl for kafka application
+      {% for key, value in kafka_sysctl_conf.items() %}
+      {{ key | replace('_', '.') }} = {{ value }}
+      {% endfor %}
+    owner: root
+    group: root
+    mode: '0644'
+  notify: sysctl_reload
+
+- name: Temp set listener to PLAINTEXT
+  become: true
+  ansible.builtin.lineinfile:
+    path: "{{ kafka__config_path }}"
+    regexp: '^listeners='
+    line: "listeners=PLAINTEXT://{{ ansible_host }}:9092,CONTROLLER://{{ ansible_host }}:9093"
+    backrefs: yes
+  when:
+    - kafka_security.enabled | default(false)
+    - kafka_security.sasl_mechanism == 'SCRAM-SHA-256'
+    - kafka_security.users is defined
+    - inventory_hostname in groups['kafka__group_broker_nodes']
+
+- name: Temp set inter.broker.listener.name to PLAINTEXT
+  become: true
+  ansible.builtin.lineinfile:
+    path: "{{ kafka__config_path }}"
+    regexp: '^inter.broker.listener.name='
+    line: "inter.broker.listener.name=PLAINTEXT"
+    backrefs: yes
+  when:
+    - kafka_security.enabled | default(false)
+    - kafka_security.sasl_mechanism == 'SCRAM-SHA-256'
+    - kafka_security.users is defined
+    - inventory_hostname in groups['kafka__group_broker_nodes']
+
+- name: Temp set advertised.listeners to PLAINTEXT
+  become: true
+  ansible.builtin.lineinfile:
+    path: "{{ kafka__config_path }}"
+    regexp: '^advertised.listeners='
+    line: "advertised.listeners=PLAINTEXT://{{ ansible_host }}:9092"
+    backrefs: yes
+  when:
+    - kafka_security.enabled | default(false)
+    - kafka_security.sasl_mechanism == 'SCRAM-SHA-256'
+    - kafka_security.users is defined
+    - inventory_hostname in groups['kafka__group_broker_nodes']
+
+- name: Temp set listener.security.protocol.map to PLAINTEXT
+  become: true
+  ansible.builtin.lineinfile:
+    path: "{{ kafka__config_path }}"
+    regexp: '^listener.security.protocol.map='
+    line: "listener.security.protocol.map=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
+    backrefs: yes
+  when:
+    - kafka_security.enabled | default(false)
+    - kafka_security.sasl_mechanism == 'SCRAM-SHA-256'
+    - kafka_security.users is defined
+    - inventory_hostname in groups['kafka__group_broker_nodes']
+
+- name: Kafka service restart (PLAINTEXT ile)
+  become: true
+  ansible.builtin.systemd:
+    name: kafka
+    state: restarted
+  when:
+    - kafka_security.enabled | default(false)
+    - kafka_security.sasl_mechanism == 'SCRAM-SHA-256'
+    - kafka_security.users is defined
+    - inventory_hostname in groups['kafka__group_broker_nodes']
+
+- name: Create Kafka SCRAM users on all brokers (PLAINTEXT)
   become: true
   become_user: "{{ kafka_user }}"
+  ansible.builtin.shell: |
+    {{ kafka_home }}/bin/kafka-configs.sh --bootstrap-server {{ ansible_host }}:9092 \
+    --alter --add-config 'SCRAM-SHA-256=[iterations=4096,password={{ item.password }}]' \
+    --entity-type users --entity-name {{ item.name }}
+  loop: "{{ kafka_security.users }}"
+  when:
+    - kafka_security.enabled | default(false)
+    - kafka_security.sasl_mechanism == 'SCRAM-SHA-256'
+    - kafka_security.users is defined
+    - inventory_hostname in groups['kafka__group_broker_nodes']
+  changed_when: true
+  retries: 5
+  delay: 10
+  register: scram_user_result
+  until: scram_user_result is succeeded
+
+- name: Listener set SASL_PLAINTEXT
+  become: true
+  ansible.builtin.lineinfile:
+    path: "{{ kafka__config_path }}"
+    regexp: '^listeners='
+    line: "listeners=SASL_PLAINTEXT://{{ ansible_host }}:9092,CONTROLLER://{{ ansible_host }}:9093"
+    backrefs: yes
+  when:
+    - kafka_security.enabled | default(false)
+    - kafka_security.sasl_mechanism == 'SCRAM-SHA-256'
+    - kafka_security.users is defined
+    - inventory_hostname in groups['kafka__group_broker_nodes']
+
+- name: inter.broker.listener.name set to SASL_PLAINTEXT
+  become: true
+  ansible.builtin.lineinfile:
+    path: "{{ kafka__config_path }}"
+    regexp: '^inter.broker.listener.name='
+    line: "inter.broker.listener.name=SASL_PLAINTEXT"
+    backrefs: yes
+  when:
+    - kafka_security.enabled | default(false)
+    - kafka_security.sasl_mechanism == 'SCRAM-SHA-256'
+    - kafka_security.users is defined
+    - inventory_hostname in groups['kafka__group_broker_nodes']
+
+- name: advertised.listeners set to SASL_PLAINTEXT
+  become: true
+  ansible.builtin.lineinfile:
+    path: "{{ kafka__config_path }}"
+    regexp: '^advertised.listeners='
+    line: "advertised.listeners=SASL_PLAINTEXT://{{ ansible_host }}:9092"
+    backrefs: yes
+  when:
+    - kafka_security.enabled | default(false)
+    - kafka_security.sasl_mechanism == 'SCRAM-SHA-256'
+    - kafka_security.users is defined
+    - inventory_hostname in groups['kafka__group_broker_nodes']
+
+- name: listener.security.protocol.map set to SASL_PLAINTEXT
+  become: true
+  ansible.builtin.lineinfile:
+    path: "{{ kafka__config_path }}"
+    regexp: '^listener.security.protocol.map='
+    line: "listener.security.protocol.map=SASL_PLAINTEXT:SASL_PLAINTEXT,CONTROLLER:PLAINTEXT"
+    backrefs: yes
+  when:
+    - kafka_security.enabled | default(false)
+    - kafka_security.sasl_mechanism == 'SCRAM-SHA-256'
+    - kafka_security.users is defined
+    - inventory_hostname in groups['kafka__group_broker_nodes']
+
+- name: Kafka service restart SASL_PLAINTEXT
+  become: true
+  ansible.builtin.systemd:
+    name: kafka
+    state: restarted
+  when:
+    - kafka_security.enabled | default(false)
+    - kafka_security.sasl_mechanism == 'SCRAM-SHA-256'
+    - kafka_security.users is defined
+    - inventory_hostname in groups['kafka__group_broker_nodes']
+
+- name: Create /opt/kafka/client.properties for SCRAM user
+  become: true
+  ansible.builtin.copy:
+    dest: /opt/kafka/client.properties
+    content: |
+      sasl.mechanism=SCRAM-SHA-256
+      security.protocol=SASL_PLAINTEXT
+      sasl.jaas.config=org.apache.kafka.common.security.scram.ScramLoginModule required username="{{ kafka_security.users[0].name }}" password="{{ kafka_security.users[0].password }}";
+    owner: root
+    group: root
+    mode: '0644'
+  when:
+    - kafka_security.enabled | default(false)
+    - kafka_security.sasl_mechanism == 'SCRAM-SHA-256'
+    - kafka_security.users is defined
+
+- name: Fetch Kafka topics
+  become: true
+  become_user: "{{ kafka_security.users[0].name | default(kafka_user) }}"
   ansible.builtin.command:
-    cmd: "{{ kafka_home }}/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list"
+    cmd: "{{ kafka_home }}/bin/kafka-topics.sh --bootstrap-server {{ ansible_host }}:9092 --command-config /opt/kafka/client.properties --list"
   register: kafka__reg_topics
   changed_when: false
   check_mode: false
@@ -273,47 +528,25 @@
   run_once: true
 
 - name: Create kafka topics
+  become: true
+  become_user: "{{ kafka_security.users[0].name | default(kafka_user) }}"
   ansible.builtin.command:
     cmd: >
-      {{ kafka_home }}/bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --topic {{ item.name }}
+      {{ kafka_home }}/bin/kafka-topics.sh --create --bootstrap-server {{ ansible_host }}:9092 --command-config /opt/kafka/client.properties --topic {{ item.name }}
       --partitions {{ item.partitions | default(1) }}
       --replication-factor {{ item.replication_factor | default(1) }}
       {% for k, v in item.config | default({}) | dictsort %}
       --config {{ k | replace("_", ".") }}={{ v }}
       {% endfor %}
-  when: item.name not in kafka__reg_topics.stdout_lines
   loop: "{{ kafka_topics }}"
+  when: item.name is defined and (kafka__reg_topics.stdout_lines is not defined or item.name not in kafka__reg_topics.stdout_lines)
   changed_when: true
   delegate_to: "{{ groups['kafka__group_broker_nodes'] | first }}"
   run_once: true
   loop_control:
     label: "{{ item.name }}"
-
-# - name: Check number of partitions per topic
-#   ansible.builtin.shell: >
-#     set -o pipefail &&
-#     /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092
-#     --describe --topic {{ item.name }} | grep -Po "(?<=PartitionCount:)\s*\d{1,}" | sed -r "s/\s*//"
-#   loop: "{{ kafka_topics }}"
-#   loop_control:
-#     label: "{{ item.name }}"
-#   register: kafka__reg_topic_partitions
-#   changed_when: false
-#   check_mode: false
-#   run_once: true
-#   when: kafka_update_partition_count | bool
-
-# - name: Create list of dictionary with topics and number of partitions
-#   ansible.builtin.set_fact:
-#     kafka__reg_topic_partitions_set: "{{ kafka__reg_topic_partitions_set | default([]) + [{'name': item.item.name, 'partitions': item.stdout}] }}"
-#   changed_when: false
-#   loop: "{{ kafka__reg_topic_partitions.results }}"
-#   loop_control:
-#     label: "{{ item.item.name }}"
-#   run_once: true
-#   when: kafka_update_partition_count | bool
-
-# - name: Increase number of partitions for underpartitionded topic
-#   ansible.builtin.command: /opt/kafka/bin/kafka-topics.sh --alter --zookeeper localhost:2181 --topic {{ item.0.name }} --partitions {{ item.0.partitions }}
-#   when: item.0.partitions | default(12) | int < item.1.partitions | int and item.0.partitions is defined and kafka_update_partition_count | bool
-#   loop: "{{ kafka_topics | zip(kafka__reg_topic_partitions_set | default([])) | list }}"
+  failed_when: >
+    (result.rc != 0 and
+     'TopicExistsException' not in result.stderr and
+     'already exists' not in result.stdout)
+  register: result

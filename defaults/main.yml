@@ -1,59 +1,141 @@
----
+kafka_install_dependencies: true
+kafka_kraft_mode: true
 kafka_user: kafka
-kafka_user_group: kafka
-kafka_home: /opt/kafka
+kafka_group: kafka
+
 kafka_version: 4.0.0
-kafka_scala_version: 2.13
-kafka_java_version: 17
-kafka_install_dependencies: false
-# if kafka_checksum is defined role will use that value instead getting checksum from kafka downloads page
-# kafka_checksum: >
-#   sha512: B8679283 A2D8DAB8 6E7C636B 2C688FE9 D9E64AC4
-#   37241F65 EF7A1733 F4D26A2B D415EEFA 04F09F19 11373BCD
-#   2A5DBC38 38C76347 F6865642 5C09202C D290CE91
-kafka_download_directory: /opt
-kafka_log_directory: /var/log/kafka # this is actual kafka service log desitnation. not to be confused with kafka logs
-kafka_replication_factor: 1
-kafka_heap_size: 1G
-kafka_opts: [] # this can be list or string
-# - -XX:NewSize=256m
-kafka_additional_config: {}
-#  message.max.bytes: 1000
+scala_version: 2.13
 
-kafka_topics: []
-# - name: topic1
-# - name: topic2
-#   replication_factor: 3
-#   partitions: 10
+kafka_download_url: "https://downloads.apache.org/kafka/{{ kafka_version }}/kafka_{{ scala_version }}-{{ kafka_version }}.tgz"
 
-# Socket Server Settings
-kafka_num_network_threads: 3
-kafka_num_io_threads: 8
+kafka_install_dir: /opt/kafka
+kafka_data_dirs:
+  - /data/kafka
+
+kafka_heap_opts: "-Xms2G -Xmx2G"
+kafka_opts:
+  - "-XX:NewSize=256m"
+
+kafka_listeners:
+  - SASL_PLAINTEXT://{{ ansible_host }}:9092
+  - CONTROLLER://{{ ansible_host }}:9093
+
+kafka_advertised_listeners:
+  - SASL_PLAINTEXT://{{ ansible_host }}:9092
+
+kafka_inter_broker_listener_name: SASL_PLAINTEXT
+kafka_controller_listener_names: CONTROLLER
+kafka_num_network_threads: 8
+kafka_num_io_threads: 16
 kafka_socket_send_buffer_bytes: 102400
 kafka_socket_recieve_buffer_bytes: 102400
 kafka_socket_request_max_bytes: 104857600
-kafka_inter_broker_listener_name: PLAINTEXT
-kafka_listeners: []
-#  - PLAINTEXT://:9092
-#  - CONTROLLER://:9093
-
-## Log retention policy
-kafka_log_retention_hours: 24
-kafka_log_retention_bytes: 0 # when set to zero this setting is ignored
-kafka_log_retention_check_interval_ms: 300000
-kafka_log_segment_bytes: 1073741824
-
-## Log basics
 kafka_num_partitions: 1
-kafka_log_dirs:
-  - /data/kafka
+kafka_offsets_topic_replication_factor: 3
+kafka_transaction_state_log_replication_factor: 3
+kafka_transaction_state_log_min_isr: 2
+kafka_log_retention_hours: 168
+kafka_log_segment_bytes: 1073741824
+kafka_log_retention_check_interval_ms: 300000
 
-## Server basics
-kafka_node_roles:
-  - broker
-  - controller
 
-## Internal topic settings
-kafka_offsets_topic_replication_factor: 1
-kafka_transaction_state_log_replication_factor: 1
-kafka_transaction_state_log_min_isr: 1
+kafka_additional_config:
+  listener.security.protocol.map: "SASL_PLAINTEXT:SASL_PLAINTEXT,CONTROLLER:PLAINTEXT"
+  share.coordinator.state.topic.min.isr: 2
+  default.replication.factor: 3
+  min.insync.replicas: 2
+  sasl.enabled.mechanisms: SCRAM-SHA-256
+  sasl.mechanism.inter.broker.protocol: SCRAM-SHA-256
+  listener.name.sasl_plaintext.scram-sha-256.sasl.jaas.config: 'org.apache.kafka.common.security.scram.ScramLoginModule required username="test" password="ChangeMe1!";'
+
+kafka_security:
+  enabled: true
+  sasl_mechanism: SCRAM-SHA-256
+  inter_broker_protocol: SCRAM-SHA-256
+  users:
+    - name: test
+      password: ChangeMe1!
+
+kafka_sysctl_conf:
+  kernel_perf_event_paranoid: 3
+  kernel_dmesg_restrict: 1
+  kernel_kptr_restrict: 2
+  kernel_sysrq: 0
+  kernel_unprivileged_bpf_disabled: 1
+  kernel_yama_ptrace_scope: 2
+  kernel_core_uses_pid: 1
+  fs_protected_fifos: 2
+  fs_protected_hardlinks: 1
+  fs_protected_symlinks: 1
+  fs_suid_dumpable: 0
+  kernel_panic: 60
+  kernel_panic_on_oops: 60
+  kernel_randomize_va_space: 2
+  fs_file_max: 1000000
+  net_core_somaxconn: 8192
+  net_core_netdev_max_backlog: 8192
+  net_core_rmem_max: 12582912
+  net_core_wmem_max: 12582912
+  net_ipv4_ip_local_port_range: "10000 65000"
+  net_ipv4_tcp_max_syn_backlog: 20480
+  net_ipv4_tcp_syncookies: 1
+  net_ipv4_tcp_fin_timeout: 20
+  net_ipv4_tcp_tw_reuse: 1
+  net_ipv4_tcp_max_tw_buckets: 0
+  net_ipv4_tcp_rmem: "10240 87380 12582912"
+  net_ipv4_tcp_wmem: "10240 87380 12582912"
+  net_ipv4_tcp_mem: "578522 704696 957044"
+  net_ipv4_tcp_keepalive_intvl: 25
+  net_ipv4_tcp_keepalive_probes: 5
+  net_ipv4_tcp_challenge_ack_limit: 2147483647
+  net_ipv4_tcp_invalid_ratelimit: 500
+  net_ipv4_tcp_rfc1337: 1
+  net_ipv4_tcp_syn_retries: 5
+  net_ipv4_tcp_synack_retries: 2
+  net_ipv4_conf_all_accept_redirects: 0
+  net_ipv4_conf_default_accept_redirects: 0
+  net_ipv4_conf_all_secure_redirects: 0
+  net_ipv4_conf_default_secure_redirects: 0
+  net_ipv4_conf_all_accept_source_route: 0
+  net_ipv4_conf_default_accept_source_route: 0
+  net_ipv4_conf_all_send_redirects: 0
+  net_ipv4_conf_default_send_redirects: 0
+  net_ipv4_conf_all_log_martians: 1
+  net_ipv4_conf_default_log_martians: 1
+  net_ipv4_conf_all_rp_filter: 1
+  net_ipv4_conf_default_rp_filter: 1
+  net_ipv4_conf_all_shared_media: 0
+  net_ipv4_conf_default_shared_media: 0
+  net_ipv4_icmp_echo_ignore_broadcasts: 1
+  net_ipv4_icmp_ignore_bogus_error_responses: 1
+  net_ipv4_ip_forward: 0
+  net_ipv6_conf_all_disable_ipv6: 0
+  net_ipv6_conf_default_disable_ipv6: 0
+  net_ipv6_conf_all_accept_redirects: 0
+  net_ipv6_conf_default_accept_redirects: 0
+  net_ipv6_conf_all_accept_source_route: 0
+  net_ipv6_conf_default_accept_source_route: 0
+  net_ipv6_conf_all_forwarding: 0
+  net_ipv6_conf_all_accept_ra: 0
+  net_ipv6_conf_default_accept_ra: 0
+  net_ipv6_conf_all_use_tempaddr: 2
+  net_ipv6_conf_default_use_tempaddr: 2
+  net_ipv6_conf_default_accept_ra_defrtr: 0
+  net_ipv6_conf_default_accept_ra_pinfo: 0
+  net_ipv6_conf_default_accept_ra_rtr_pref: 0
+  net_ipv6_conf_default_autoconf: 0
+  net_ipv6_conf_default_dad_transmits: 0
+  net_ipv6_conf_default_max_addresses: 1
+  net_ipv6_conf_default_router_solicitations: 0
+  net_netfilter_nf_conntrack_max: 2000000
+  net_netfilter_nf_conntrack_tcp_loose: 0
+  vm_swappiness: 1
+  dev_tty_ldisc_autoload: 0
+
+kafka_topics:
+  - name: test.email
+    replication_factor: 2
+    partitions: 3
+  - name: test.sms
+    replication_factor: 2
+    partitions: 3

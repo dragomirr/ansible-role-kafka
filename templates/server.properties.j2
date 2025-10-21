@@ -50,7 +50,7 @@ inter.broker.listener.name={{ kafka_inter_broker_listener_name }}
 # Listener name, hostname and port the broker will advertise to clients.
 # If not set, it uses the value for "listeners".
 {% if "broker" in kafka_node_roles %}
-advertised.listeners=PLAINTEXT://{{ kafka_node_ip | default(ansible_default_ipv4['address'])}}:9092
+advertised.listeners=SASL_PLAINTEXT://{{ kafka_node_ip | default(ansible_default_ipv4['address'])}}:9092
 {% endif %}
 
 # A comma-separated list of the names of the listeners used by the controller.
@@ -68,7 +68,7 @@ CONTROLLER://{{ hostvars[host]['kafka_node_ip'] | default(hostvars[host]['ansibl
 {% endif %}
 
 # Maps listener names to security protocols, the default is for them to be the same. See the config documentation for more details
-listener.security.protocol.map=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,SSL:SSL,SASL_PLAINTEXT:SASL_PLAINTEXT,SASL_SSL:SASL_SSL
+#listener.security.protocol.map=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,SSL:SSL,SASL_PLAINTEXT:SASL_PLAINTEXT,SASL_SSL:SASL_SSL
 
 # The number of threads that the server uses for receiving requests from the network and sending responses to the network
 num.network.threads={{ kafka_num_network_threads }}
