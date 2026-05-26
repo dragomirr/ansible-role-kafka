@@ -28,7 +28,7 @@ node.id={{ kafka_node_id | mandatory }}
 
 # The connect string for the controller quorum
 controller.quorum.voters={% for host in groups['kafka__group_controller_nodes'] %}
-{{ hostvars[host]['kafka_node_id'] }}@{{ hostvars[host]['kafka_node_ip'] | default(hostvars[host]['ansible_default_ipv4']['address']) }}:9093
+{{ hostvars[host]['kafka_node_id'] }}@{{ hostvars[host]['kafka_node_ip'] | default(hostvars[host]['ansible_facts']['default_ipv4']['address']) }}:9093
 {%- if not loop.last %},{% endif %}
 {% endfor %}
 
@@ -50,7 +50,7 @@ inter.broker.listener.name={{ kafka_inter_broker_listener_name }}
 # Listener name, hostname and port the broker will advertise to clients.
 # If not set, it uses the value for "listeners".
 {% if "broker" in kafka_node_roles %}
-advertised.listeners=PLAINTEXT://{{ kafka_node_ip | default(ansible_default_ipv4['address'])}}:9092
+advertised.listeners=PLAINTEXT://{{ kafka_node_ip | default(ansible_facts['default_ipv4']['address'])}}:9092
 {% endif %}
 
 # A comma-separated list of the names of the listeners used by the controller.
@@ -61,10 +61,7 @@ controller.listener.names=CONTROLLER
 {% endif %}
 
 {% if "broker" in kafka_node_roles and "controller" not in kafka_node_roles %}
-controller.listener.names={% for host in groups['kafka__group_controller_nodes'] %}
-CONTROLLER://{{ hostvars[host]['kafka_node_ip'] | default(hostvars[host]['ansible_default_ipv4']['address']) }}:9093
-{%- if not loop.last %},{% endif %}
-{% endfor %}
+controller.listener.names=CONTROLLER
 {% endif %}
 
 # Maps listener names to security protocols, the default is for them to be the same. See the config documentation for more details

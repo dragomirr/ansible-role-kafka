@@ -1,7 +1,7 @@
 ---
-kafka__download_url: https://archive.apache.org/dist/kafka/{{ kafka_version }}/kafka_{{ kafka_scala_version }}-{{ kafka_version }}.tgz
+kafka__download_url: https://www.apache.org/dyn/closer.lua/kafka/{{ kafka_version }}/kafka_{{ kafka_scala_version }}-{{ kafka_version }}.tgz?action=download
 kafka__download_destination: "{{ kafka_download_directory }}/kafka_{{ kafka_scala_version }}-{{ kafka_version }}.tgz"
-kafka__dependencies: "{{ (ansible_os_family == 'Debian') | ternary(['openjdk-' ~ kafka_java_version ~ '-jre-headless'], 'java-' ~ kafka_java_version ~ '-openjdk-headless') }}"
+kafka__dependencies: "{{ (ansible_facts['os_family'] == 'Debian') | ternary(['openjdk-' ~ kafka_java_version ~ '-jre-headless'], 'java-' ~ kafka_java_version ~ '-openjdk-headless') }}"
 kafka__default_listeners: "{{ ('controller' in kafka_node_roles) | ternary(('broker' in kafka_node_roles) | ternary(['PLAINTEXT://:9092', 'CONTROLLER://:9093'], ['CONTROLLER://:9093']), ['PLAINTEXT://:9092']) }}"
 kafka__listeners: "{{ (kafka_listeners | length > 0) | ternary(kafka_listeners, kafka__default_listeners) }}"
 kafka__uuid_file: "{{ kafka_home }}/CLUSTER_UUID.lock"

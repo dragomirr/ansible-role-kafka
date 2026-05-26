@@ -4,4 +4,4 @@
   tasks:
     - name: "Include dragomirr.kafka"
       ansible.builtin.include_role:
-        name: "dragomirr.kafka"
+        name: "kafka"

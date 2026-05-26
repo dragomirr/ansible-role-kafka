@@ -10,7 +10,7 @@
   ansible.builtin.apt:
     update_cache: true
     cache_valid_time: 3600
-  when: ansible_os_family == "Debian" and kafka_install_dependencies | bool
+  when: ansible_facts['os_family'] == "Debian" and kafka_install_dependencies | bool
 
   # acl package is required to set correct permissions when using become_user
 - name: Install acl package
@@ -18,7 +18,7 @@
   ansible.builtin.package:
     name: acl
     state: present
-  when: kafka_install_dependencies | bool and ansible_os_family == "Debian"
+  when: kafka_install_dependencies | bool and ansible_facts['os_family'] == "Debian"
 
 - name: Install java
   become: true

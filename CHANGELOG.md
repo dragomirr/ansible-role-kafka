@@ -1,3 +1,9 @@
+### 0.15.0 (May 26, 2026)
+
+* Update default version to 4.3.0 -- [Release announcement](https://kafka.apache.org/blog/2026/05/22/apache-kafka-4.3.0-release-announcement/)
+* Move testing from molecule vagrant to ec2
+* Switch default testing distribution to Debian 13
+
 ### 0.14.0 (June 24, 2025)
 
 * Uncommented security protocol map. Resolved error `cannot start since No security protocol defined for listener CONTROLLER`

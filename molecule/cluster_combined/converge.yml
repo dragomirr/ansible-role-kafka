@@ -1,6 +1,10 @@
 ---
 - name: Converge
   hosts: all
+  pre_tasks:
+    - name: Set kafka_node_ip to instance private IP
+      ansible.builtin.set_fact:
+        kafka_node_ip: "{{ ansible_default_ipv4.address }}"
   tasks:
     - name: "Include kafka"
       ansible.builtin.include_role:

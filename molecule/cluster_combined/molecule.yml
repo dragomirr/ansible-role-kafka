@@ -2,52 +2,78 @@
 dependency:
   name: galaxy
 driver:
-  name: vagrant
+  name: ec2
 platforms:
   - name: kafkaansiblemoleculenode1
-    box: ${MOLECULE_VAGRANT_BOX:-ubuntu/jammy64}
-    cpu: 0.5
-    memory: 2048
-    interfaces:
-      - network_name: private_network
-        ip: 192.168.124.2
+    image: ""
+    image_name: "debian-13-amd64-*"
+    image_owner:
+      - "136693071363"
+    instance_type: t3.small
+    ssh_user: admin
+    assign_public_ip: true
+    region: eu-west-1
+    tags:
+      Name: kafkaansiblemoleculenode1
   - name: kafkaansiblemoleculenode2
-    box: ${MOLECULE_VAGRANT_BOX:-ubuntu/jammy64}
-    cpu: 0.5
-    memory: 2048
-    interfaces:
-      - network_name: private_network
-        ip: 192.168.124.3
+    image: ""
+    image_name: "debian-13-amd64-*"
+    image_owner:
+      - "136693071363"
+    instance_type: t3.small
+    ssh_user: admin
+    assign_public_ip: true
+    region: eu-west-1
+    tags:
+      Name: kafkaansiblemoleculenode2
   - name: kafkaansiblemoleculenode3
-    box: ${MOLECULE_VAGRANT_BOX:-ubuntu/jammy64}
-    cpu: 0.5
-    memory: 2048
-    interfaces:
-      - network_name: private_network
-        ip: 192.168.124.4
+    image: ""
+    image_name: "debian-13-amd64-*"
+    image_owner:
+      - "136693071363"
+    instance_type: t3.small
+    ssh_user: admin
+    assign_public_ip: true
+    region: eu-west-1
+    tags:
+      Name: kafkaansiblemoleculenode3
   - name: kafkaansiblemoleculenode4
-    box: ${MOLECULE_VAGRANT_BOX:-ubuntu/jammy64}
-    cpu: 0.5
-    memory: 2048
-    interfaces:
-      - network_name: private_network
-        ip: 192.168.124.5
+    image: ""
+    image_name: "debian-13-amd64-*"
+    image_owner:
+      - "136693071363"
+    instance_type: t3.small
+    ssh_user: admin
+    assign_public_ip: true
+    region: eu-west-1
+    tags:
+      Name: kafkaansiblemoleculenode4
   - name: kafkaansiblemoleculenode5
-    box: ${MOLECULE_VAGRANT_BOX:-ubuntu/jammy64}
-    cpu: 0.5
-    memory: 2048
-    interfaces:
-      - network_name: private_network
-        ip: 192.168.124.6
+    image: ""
+    image_name: "debian-13-amd64-*"
+    image_owner:
+      - "136693071363"
+    instance_type: t3.small
+    ssh_user: admin
+    assign_public_ip: true
+    region: eu-west-1
+    tags:
+      Name: kafkaansiblemoleculenode5
   - name: kafkaansiblemoleculenode6
-    box: ${MOLECULE_VAGRANT_BOX:-ubuntu/jammy64}
-    cpu: 0.5
-    memory: 2048
-    interfaces:
-      - network_name: private_network
-        ip: 192.168.124.7
+    image: ""
+    image_name: "debian-13-amd64-*"
+    image_owner:
+      - "136693071363"
+    instance_type: t3.small
+    ssh_user: admin
+    assign_public_ip: true
+    region: eu-west-1
+    tags:
+      Name: kafkaansiblemoleculenode6
 provisioner:
   name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: "${MOLECULE_PROJECT_DIRECTORY}/.."
   # options:
   #   D: true
   #   C: true
@@ -57,30 +83,24 @@ provisioner:
         # kafka_node_roles:
         #   - controller
         kafka_node_id: 1
-        kafka_node_ip: 192.168.124.2
       kafkaansiblemoleculenode2:
         # kafka_node_roles:
         #   - controller
         kafka_node_id: 2
-        kafka_node_ip: 192.168.124.3
       kafkaansiblemoleculenode3:
         # kafka_node_roles:
         #   - controller
         kafka_node_id: 3
-        kafka_node_ip: 192.168.124.4
       kafkaansiblemoleculenode4:
         kafka_node_id: 4
-        kafka_node_ip: 192.168.124.5
         kafka_node_roles:
           - broker
       kafkaansiblemoleculenode5:
         kafka_node_id: 5
-        kafka_node_ip: 192.168.124.6
         kafka_node_roles:
           - broker
       kafkaansiblemoleculenode6:
         kafka_node_id: 6
-        kafka_node_ip: 192.168.124.7
         kafka_node_roles:
           - broker
     group_vars:

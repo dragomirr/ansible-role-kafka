@@ -2,9 +2,9 @@
 kafka_user: kafka
 kafka_user_group: kafka
 kafka_home: /opt/kafka
-kafka_version: 4.0.0
+kafka_version: 4.3.0
 kafka_scala_version: 2.13
-kafka_java_version: 17
+kafka_java_version: 21
 kafka_install_dependencies: false
 # if kafka_checksum is defined role will use that value instead getting checksum from kafka downloads page
 # kafka_checksum: >
