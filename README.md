@@ -2,15 +2,15 @@
 
 Ansible role for install kafka with KRaft mode on Debian and RedHat distributions. KRaft is marked production ready in version 3.3.1 so this role should be used to deploy kafka version equal or greater than 3.3.1.
 
-Tested with ubuntu 22.04 and AlmaLinux 8, but should work with most distros, especially when not using this role to install dependencies. See `kafka_install_dependencies` variable.
+Tested with ubuntu Debian13 but should work with most distros, especially when not using this role to install dependencies. See `kafka_install_dependencies` variable.
 
 For more info check [changelog](https://github.com/dragomirr/ansible-role-kafka/blob/main/CHANGELOG.md).
 
 ## Requirements
 
 * x86_64 arch on servers that will run kafka
-* ansible 2.15 -- did not test with other versions, but probably would work with anything equal or greater than version 2.10
-* Java installed -- version 8(deprecated), 11 or 17. -- `apt install openjdk-17-jre-headless` or `dnf install java-17-openjdk-headless`
+* ansible 2.21 -- did not test with other versions, but probably would work with anything equal or greater than version 2.10
+* Java installed -- version 8(deprecated), 11, 17 or 21. -- `apt install openjdk-21-jre-headless` or `dnf install java-21-openjdk-headless`
 * For ubuntu setfacl from `acl` package -- `apt install acl`
 
 ## Role Variables
@@ -77,7 +77,7 @@ Run tests:
 pip install molecule
 
 # install vagrant plugin
-pip install molecule-plugins[vagrant]
+pip install molecule-plugins[ec2]
 
 # run test
 molecule test

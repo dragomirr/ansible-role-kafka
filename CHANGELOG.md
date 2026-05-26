@@ -1,3 +1,7 @@
+### 0.16.0 (May 26, 2026)
+
+* Readme update
+
 ### 0.15.0 (May 26, 2026)
 
 * Update default version to 4.3.0 -- [Release announcement](https://kafka.apache.org/blog/2026/05/22/apache-kafka-4.3.0-release-announcement/)
